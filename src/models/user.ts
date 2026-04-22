@@ -8,7 +8,7 @@ export class User extends Model {
   firstname!: string;
 
   @Column({ type: DataType.STRING })
-  lastName!: string;
+  lastname!: string;
 
   @Column({ type: DataType.STRING, allowNull: false, unique: true })
   email!: string;
