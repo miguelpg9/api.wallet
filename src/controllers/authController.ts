@@ -54,7 +54,7 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
 export const getCurrentUser = asyncHandler(
   async (req: Request, res: Response) => {
     if (!req.user?.userId) {
-      throw Errors.unauthorized("User not authenticated");
+      throw Errors.unauthorized("User not authenticated", "UNAUTHORIZED");
     }
 
     const user = await currentUser(req.user.userId);
