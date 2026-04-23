@@ -8,5 +8,7 @@ declare module "express-serve-static-core" {
     };
     validatedBody?: any;
     validatedQuery?: any;
+    requestId?: string;
+    logger?: any;
   }
 }
