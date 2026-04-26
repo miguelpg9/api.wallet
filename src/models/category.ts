@@ -1,36 +1,55 @@
-import {
-  Table,
-  Model,
-  Column,
-  DataType,
-  ForeignKey,
-  BelongsTo,
-  HasMany,
-} from "sequelize-typescript";
-import { User } from "./user";
-import { Transaction } from "./transaction";
+import { DataTypes, Model } from "sequelize";
+import sequelize from "../config/database";
 
-@Table({ tableName: "categories", timestamps: false })
 export class Category extends Model {
-  @Column({ type: DataType.STRING, allowNull: false })
-  name!: string;
+  public id!: string;
+  public name!: string;
+  public user_id!: string;
+  public is_active!: boolean;
 
-  @Column({ type: DataType.DATE, allowNull: false, defaultValue: DataType.NOW })
-  created_at!: Date;
-
-  @ForeignKey(() => User)
-  @Column({ type: DataType.UUID, allowNull: false })
-  user_id!: string;
-
-  @BelongsTo(() => User)
-  user!: User;
-
-  @HasMany(() => Transaction)
-  transactions!: Transaction[];
-
-  @Column({ type: DataType.BOOLEAN, allowNull: false })
-  is_active!: boolean;
-
-  @Column({ type: DataType.DATE })
-  deleted_at!: Date;
+  public readonly created_at!: Date;
+  public readonly updated_at!: Date;
+  public readonly deleted_at!: Date | null;
 }
+
+Category.init(
+  {
+    id: {
+      type: DataTypes.UUID,
+      primaryKey: true,
+      defaultValue: DataTypes.UUIDV4,
+    },
+
+    name: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+
+    user_id: {
+      type: DataTypes.UUID,
+      allowNull: false,
+    },
+
+    is_active: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true,
+    },
+
+    deleted_at: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+  },
+  {
+    sequelize,
+    tableName: "categories",
+
+    timestamps: true,
+    createdAt: "created_at",
+    updatedAt: "updated_at",
+
+    paranoid: true,
+    deletedAt: "deleted_at",
+  },
+);

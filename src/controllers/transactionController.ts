@@ -6,6 +6,7 @@ import {
   createTransactionService,
   updateTransactionService,
   deleteTransactionService,
+  restoreTransactionService,
   getTransactionsSummaryService,
   getExpensesByCategoryService,
   getExpensesByMonthService,
@@ -127,6 +128,22 @@ export const deleteTransaction = asyncHandler(
     );
   },
 );
+
+export const restoreTransaction = asyncHandler(async (req, res) => {
+  const userId = req.user!.userId;
+  const { id } = req.params;
+
+  if (!id || Array.isArray(id)) {
+    throw Errors.badRequest("Invalid transaction id", "BAD_REQUEST");
+  }
+
+  const transaction = await restoreTransactionService({
+    userId,
+    transactionId: id,
+  });
+
+  return res.status(200).json(successResponse(transaction));
+});
 
 export const getSummary = asyncHandler(async (req: Request, res: Response) => {
   const userId = req.user!.userId;

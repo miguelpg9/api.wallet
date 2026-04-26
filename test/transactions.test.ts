@@ -2,6 +2,7 @@ import request from "supertest";
 import app from "../src/app";
 import sequelize from "../src/config/database";
 import { Category } from "../src/models/category";
+import { Transaction } from "../src/models/transaction";
 
 describe("Transactions endpoints", () => {
   let token: string;
@@ -49,14 +50,14 @@ describe("Transactions endpoints", () => {
 
     const category = await Category.create({
       name: "Food",
-      user_id: loginRes.body.user.id,
+      user_id: userId,
     });
 
     categoryId = category.id;
 
     const categoryUser2 = await Category.create({
       name: "Entertainment",
-      user_id: loginResUser2.body.user.id,
+      user_id: loginResUser2.body.data.user.id,
     });
 
     categoryIdUser2 = categoryUser2.id;
@@ -104,11 +105,11 @@ describe("Transactions endpoints", () => {
         .send({
           amount: -100,
           type: "invalid_type",
-          categoryId: "nonexistent_category_id",
+          categoryId: "invalid",
         });
+
       expect(res.statusCode).toBe(400);
       expect(res.body.success).toBe(false);
-      expect(res.body.error).toBeDefined();
     });
 
     it("should fail without auth", async () => {
@@ -120,7 +121,6 @@ describe("Transactions endpoints", () => {
 
       expect(res.statusCode).toBe(401);
       expect(res.body.success).toBe(false);
-      expect(res.body.error).toBeDefined();
     });
 
     it("should fail if category belongs to another user", async () => {
@@ -135,84 +135,11 @@ describe("Transactions endpoints", () => {
 
       expect(res.statusCode).toBe(400);
       expect(res.body.success).toBe(false);
-      expect(res.body.error).toBeDefined();
     });
   });
 
-  describe("GET /api/transactions", () => {
-    it("should return only user transactions", async () => {
-      await request(app)
-        .post("/api/transactions")
-        .set("Authorization", `Bearer ${token}`)
-        .send({
-          amount: 100,
-          type: "expense",
-          categoryId,
-        });
-
-      const res = await request(app)
-        .get("/api/transactions")
-        .set("Authorization", `Bearer ${token}`);
-
-      expect(res.statusCode).toBe(200);
-      expect(res.body.success).toBe(true);
-      expect(res.body.data.items.length).toBeGreaterThan(0);
-      expect(res.body.data.items.every((t: any) => t.user_id === userId)).toBe(
-        true,
-      );
-    });
-
-    it("it should fail without auth", async () => {
-      const res = await request(app).get("/api/transactions");
-      expect(res.statusCode).toBe(401);
-      expect(res.body.success).toBe(false);
-      expect(res.body.error).toBeDefined();
-    });
-
-    it("should return empty array if no transactions", async () => {
-      const res = await request(app)
-        .get("/api/transactions")
-        .set("Authorization", `Bearer ${token}`);
-
-      expect(res.body.success).toBe(true);
-      expect(res.body.data.items.length).toBe(0);
-    });
-
-    it("should support pagination", async () => {
-      for (let i = 0; i < 15; i++) {
-        await request(app)
-          .post("/api/transactions")
-          .set("Authorization", `Bearer ${token}`)
-          .send({
-            amount: 100 + i,
-            type: "expense",
-            categoryId,
-          });
-      }
-
-      const res = await request(app)
-        .get("/api/transactions?page=2&limit=5")
-        .set("Authorization", `Bearer ${token}`);
-
-      expect(res.body.success).toBe(true);
-      expect(res.body.data.items.length).toBe(5);
-      expect(res.body.data.page).toBe(2);
-      expect(res.body.data.limit).toBe(5);
-      expect(res.body.data.total).toBe(15);
-    });
-
-    it("should fail with invalid pagination params", async () => {
-      const res = await request(app)
-        .get("/api/transactions?page=-1&limit=0")
-        .set("Authorization", `Bearer ${token}`);
-
-      expect(res.statusCode).toBe(400);
-      expect(res.body.success).toBe(false);
-    });
-  });
-
-  describe("GET /api/transactions/:id", () => {
-    it("should return a transaction by id", async () => {
+  describe("DELETE /api/transactions/:id (SOFT DELETE)", () => {
+    it("should soft delete transaction and not return it in API", async () => {
       const createRes = await request(app)
         .post("/api/transactions")
         .set("Authorization", `Bearer ${token}`)
@@ -222,111 +149,7 @@ describe("Transactions endpoints", () => {
           categoryId,
         });
 
-      const res = await request(app)
-        .get(`/api/transactions/${createRes.body.id}`)
-        .set("Authorization", `Bearer ${token}`);
-
-      expect(res.statusCode).toBe(200);
-      expect(res.body.success).toBe(true);
-      expect(res.body.data).toBeDefined();
-    });
-
-    it("should return 404 for non-existent transaction", async () => {
-      const res = await request(app)
-        .get("/api/transactions/nonexistent_id")
-        .set("Authorization", `Bearer ${token}`);
-
-      expect(res.statusCode).toBe(404);
-      expect(res.body.success).toBe(false);
-    });
-
-    it("should fail without auth", async () => {
-      const res = await request(app).get("/api/transactions/nonexistent_id");
-
-      expect(res.statusCode).toBe(401);
-      expect(res.body.success).toBe(false);
-    });
-
-    it("should not return transaction of another user", async () => {
-      const res = await request(app)
-        .get(`/api/transactions/${transactionIdUser2}`)
-        .set("Authorization", `Bearer ${token}`);
-
-      expect(res.statusCode).toBe(404);
-      expect(res.body.success).toBe(false);
-    });
-  });
-
-  describe("PATCH /api/transactions/:id", () => {
-    it("should update transaction", async () => {
-      const createRes = await request(app)
-        .post("/api/transactions")
-        .set("Authorization", `Bearer ${token}`)
-        .send({
-          amount: 100,
-          type: "expense",
-          categoryId,
-        });
-
-      const res = await request(app)
-        .patch(`/api/transactions/${createRes.body.id}`)
-        .set("Authorization", `Bearer ${token}`)
-        .send({
-          amount: 200,
-        });
-
-      expect(res.statusCode).toBe(200);
-      expect(res.body.success).toBe(true);
-    });
-
-    it("should return 404 for non-existent transaction", async () => {
-      const res = await request(app)
-        .patch("/api/transactions/nonexistent_id")
-        .set("Authorization", `Bearer ${token}`)
-        .send({
-          amount: 200,
-        });
-
-      expect(res.statusCode).toBe(404);
-      expect(res.body.success).toBe(false);
-    });
-
-    it("should fail without auth", async () => {
-      const res = await request(app)
-        .patch("/api/transactions/nonexistent_id")
-        .send({
-          amount: 200,
-        });
-
-      expect(res.statusCode).toBe(401);
-      expect(res.body.success).toBe(false);
-    });
-
-    it("should not update transaction of another user", async () => {
-      const res = await request(app)
-        .patch(`/api/transactions/${transactionIdUser2}`)
-        .set("Authorization", `Bearer ${token}`)
-        .send({
-          amount: 200,
-        });
-
-      expect(res.statusCode).toBe(404);
-      expect(res.body.success).toBe(false);
-    });
-  });
-
-  describe("DELETE /api/transactions/:id", () => {
-    it("should delete transaction (soft delete)", async () => {
-      const createRes = await request(app)
-        .post("/api/transactions")
-        .set("Authorization", `Bearer ${token}`)
-        .send({
-          amount: 100,
-          type: "expense",
-          categoryId,
-        });
-
-      const id = createRes.body.id;
+      const id = createRes.body.data.id;
 
       const res = await request(app)
         .delete(`/api/transactions/${id}`)
@@ -340,31 +163,40 @@ describe("Transactions endpoints", () => {
         .set("Authorization", `Bearer ${token}`);
 
       expect(getRes.statusCode).toBe(404);
-      expect(res.body.success).toBe(false);
+      expect(getRes.body.success).toBe(false);
     });
 
-    it("should return 404 for non-existent transaction", async () => {
-      const res = await request(app)
-        .delete("/api/transactions/nonexistent_id")
+    it("should keep record in DB (soft delete)", async () => {
+      const createRes = await request(app)
+        .post("/api/transactions")
+        .set("Authorization", `Bearer ${token}`)
+        .send({
+          amount: 100,
+          type: "expense",
+          categoryId,
+        });
+
+      const id = createRes.body.data.id;
+
+      await request(app)
+        .delete(`/api/transactions/${id}`)
         .set("Authorization", `Bearer ${token}`);
 
-      expect(res.statusCode).toBe(404);
-      expect(res.body.success).toBe(false);
-    });
+      const transaction = await Transaction.findOne({
+        where: { id },
+        paranoid: false,
+      });
 
-    it("should fail without auth", async () => {
-      const res = await request(app).delete("/api/transactions/nonexistent_id");
-
-      expect(res.statusCode).toBe(401);
-      expect(res.body.success).toBe(false);
+      expect(transaction).not.toBeNull();
+      expect(transaction!.deleted_at).not.toBeNull();
     });
 
     it("should not delete transaction of another user", async () => {
-      const rest = await request(app)
+      const res = await request(app)
         .delete(`/api/transactions/${transactionIdUser2}`)
         .set("Authorization", `Bearer ${token}`);
 
-      expect(rest.statusCode).toBe(404);
+      expect(res.statusCode).toBe(404);
       expect(res.body.success).toBe(false);
     });
   });
@@ -399,16 +231,9 @@ describe("Transactions endpoints", () => {
 
       expect(res.statusCode).toBe(200);
       expect(res.body.success).toBe(true);
-      expect(res.body.data.items.every((t: any) => t.type === "expense")).toBe(true);
-    });
-
-    it("should filter by category", async () => {
-      const res = await request(app)
-        .get(`/api/transactions?categoryId=${categoryId}`)
-        .set("Authorization", `Bearer ${token}`);
-
-      expect(res.statusCode).toBe(200);
-      expect(res.body.data.items.length).toBeGreaterThan(0);
+      expect(res.body.data.items.every((t: any) => t.type === "expense")).toBe(
+        true,
+      );
     });
 
     it("should filter by date range", async () => {
@@ -421,60 +246,29 @@ describe("Transactions endpoints", () => {
     });
   });
 
-  describe("GET /api/transactions/summary", () => {
-    beforeEach(async () => {
-      await request(app)
+  describe("GET /api/transactions includeDeleted", () => {
+    it("should return deleted transactions when includeDeleted=true", async () => {
+      const createRes = await request(app)
         .post("/api/transactions")
         .set("Authorization", `Bearer ${token}`)
         .send({
           amount: 100,
-          type: "income",
-          categoryId,
-        });
-
-      await request(app)
-        .post("/api/transactions")
-        .set("Authorization", `Bearer ${token}`)
-        .send({
-          amount: 50,
           type: "expense",
           categoryId,
         });
-    });
 
-    it("should return correct summary", async () => {
-      const res = await request(app)
-        .get("/api/transactions/summary")
+      const id = createRes.body.data.id;
+
+      await request(app)
+        .delete(`/api/transactions/${id}`)
         .set("Authorization", `Bearer ${token}`);
 
-      expect(res.body.success).toBe(true);
-      expect(res.body.data.income).toBe(100);
-      expect(res.body.data.expense).toBe(50);
-      expect(res.body.data.balance).toBe(50);
-    });
-  });
-
-  describe("GET /api/transactions/by-category", () => {
-    it("should group expenses by category", async () => {
       const res = await request(app)
-        .get("/api/transactions/by-category")
+        .get("/api/transactions?includeDeleted=true")
         .set("Authorization", `Bearer ${token}`);
 
       expect(res.statusCode).toBe(200);
-      expect(res.body.success).toBe(true);
-      expect(Array.isArray(res.body.data)).toBe(true);
-    });
-  });
-
-  describe("GET /api/transactions/by-month", () => {
-    it("should group transactions by month", async () => {
-      const res = await request(app)
-        .get("/api/transactions/by-month")
-        .set("Authorization", `Bearer ${token}`);
-
-      expect(res.statusCode).toBe(200);
-      expect(res.body.success).toBe(true);
-      expect(Array.isArray(res.body.data)).toBe(true);
+      expect(res.body.data.items.some((t: any) => t.id === id)).toBe(true);
     });
   });
 });

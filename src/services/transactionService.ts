@@ -22,38 +22,36 @@ export const getAllTransactionsService = async ({
     search,
     sortBy,
     order,
+    includeDeleted,
   } = filters;
 
   const offset = (page - 1) * limit;
 
   const where: any = {
     user_id: userId,
-    deleted_at: null,
   };
 
   if (type) where.type = type;
 
   if (categoryId) {
-    where.category_id = {
-      [Op.in]: categoryId,
-    };
+    where.category_id = categoryId;
   }
 
   if (from || to) {
     where.date = {};
-    if (from) where.date[Op.gte] = from;
-    if (to) where.date[Op.lte] = to;
+    if (from) where.date.$gte = from;
+    if (to) where.date.$lte = to;
   }
 
   if (minAmount || maxAmount) {
     where.amount = {};
-    if (minAmount) where.amount[Op.gte] = minAmount;
-    if (maxAmount) where.amount[Op.lte] = maxAmount;
+    if (minAmount) where.amount.$gte = minAmount;
+    if (maxAmount) where.amount.$lte = maxAmount;
   }
 
   if (search) {
     where.description = {
-      [Op.iLike]: `%${search}%`,
+      $iLike: `%${search}%`,
     };
   }
 
@@ -62,6 +60,7 @@ export const getAllTransactionsService = async ({
     limit,
     offset,
     order: [[sortBy, order.toUpperCase()]],
+    paranoid: !includeDeleted, // 🔥 clave
   });
 
   return {
@@ -204,10 +203,41 @@ export const deleteTransactionService = async ({
     transactionId,
   });
 
-  transaction.deleted_at = new Date();
-  await transaction.save();
+  if (!transaction) {
+    throw Errors.notFound("Transaction not found", "TRANSACTION_NOT_FOUND");
+  }
+  
+  await transaction.destroy();
 
   return;
+};
+
+export const restoreTransactionService = async ({
+  userId,
+  transactionId,
+}: {
+  userId: string;
+  transactionId: string;
+}) => {
+  const transaction = await Transaction.findOne({
+    where: {
+      id: transactionId,
+      user_id: userId,
+    },
+    paranoid: false,
+  });
+
+  if (!transaction) {
+    throw Errors.notFound("Transaction not found", "TRANSACTION_NOT_FOUND");
+  }
+
+  if (!transaction.deleted_at) {
+    throw Errors.badRequest("Transaction is not deleted");
+  }
+
+  await transaction.restore();
+
+  return transaction;
 };
 
 export const getTransactionsSummaryService = async (userId: string) => {

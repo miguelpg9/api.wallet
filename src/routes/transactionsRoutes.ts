@@ -17,6 +17,7 @@ import {
   createTransaction,
   updateTransaction,
   deleteTransaction,
+  restoreTransaction,
   getSummary,
   getExpensesByCategory,
   getExpensesByMonth,
@@ -39,6 +40,11 @@ router.delete(
   "/:id",
   validateParams(transactionParamsSchema),
   deleteTransaction,
+);
+router.post(
+  "/:id/restore",
+  validateParams(transactionParamsSchema),
+  restoreTransaction,
 );
 router.get("/summary", getSummary);
 router.get("/by-category", getExpensesByCategory);
