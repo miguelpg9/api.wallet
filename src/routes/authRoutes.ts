@@ -8,7 +8,7 @@ import {
   logout,
   refresh,
 } from "../controllers/authController";
-import { loginSchema, registerSchema } from "../validations/authSchemas";
+import { loginSchema, registerSchema } from "../schemas/auth.schema";
 import { authLimiter } from "../middlewares/securityMiddleware";
 
 const router = Router();

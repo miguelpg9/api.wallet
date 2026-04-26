@@ -18,6 +18,8 @@ const formatUser = (user: any) => ({
   created_at: user.created_at,
 });
 import { logger } from "../utils/logger";
+import { success } from "zod";
+import { successResponse } from "../utils/apiResponse";
 
 export const register = asyncHandler(async (req: Request, res: Response) => {
   const { firstname, lastname, email, password } = req.validatedBody;
@@ -34,11 +36,13 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
     email: user.email,
   });
 
-  return res.status(201).json({
-    accessToken,
-    token_type: "Bearer",
-    user: formatUser(user),
-  });
+  return res.status(201).json(
+    successResponse({
+      accessToken,
+      token_type: "Bearer",
+      user: formatUser(user),
+    }),
+  );
 });
 
 export const login = asyncHandler(async (req: Request, res: Response) => {
@@ -67,11 +71,13 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
     path: "/api/auth",
   });
 
-  return res.status(200).json({
-    accessToken,
-    token_type: "Bearer",
-    user: formatUser(user),
-  });
+  return res.status(200).json(
+    successResponse({
+      accessToken,
+      token_type: "Bearer",
+      user: formatUser(user),
+    }),
+  );
 });
 
 export const getCurrentUser = asyncHandler(
@@ -82,9 +88,11 @@ export const getCurrentUser = asyncHandler(
 
     const user = await currentUser(req.user.userId);
 
-    return res.status(200).json({
-      user: formatUser(user),
-    });
+    return res.status(200).json(
+      successResponse({
+        user: formatUser(user),
+      }),
+    );
   },
 );
 
@@ -99,9 +107,11 @@ export const logout = asyncHandler(async (req: Request, res: Response) => {
     path: "/api/auth",
   });
 
-  return res.status(200).json({
-    message: "Logged out successfully",
-  });
+  return res.status(200).json(
+    successResponse({
+      message: "Logged out successfully",
+    }),
+  );
 });
 
 export const refresh = asyncHandler(async (req: Request, res: Response) => {
@@ -134,7 +144,9 @@ export const refresh = asyncHandler(async (req: Request, res: Response) => {
     path: "/api/auth",
   });
 
-  return res.status(200).json({
-    accessToken,
-  });
+  return res.status(200).json(
+    successResponse({
+      accessToken,
+    }),
+  );
 });

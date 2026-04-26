@@ -9,7 +9,8 @@
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true,
     "outDir": "./dist",
-    "rootDir": "./src"
+    "rootDir": "./src",
+    "types": ["jest", "node", "supertest"]
   },
   "include": ["src"]
 }

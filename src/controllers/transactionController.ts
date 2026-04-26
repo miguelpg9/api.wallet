@@ -11,23 +11,25 @@ import {
   getExpensesByMonthService,
 } from "../services/transactionService";
 import { Errors } from "../utils/errors";
+import { successResponse } from "../utils/apiResponse";
 
 export const getAllTransactions = asyncHandler(
   async (req: Request, res: Response) => {
-    const userId = req.user!.userId;
-    const { type, category_id, from, to, page, limit } = req.validatedQuery;
+    const userId = (req as any).user.userId;
 
-    const response = await getAllTransactionsService({
+    const result = await getAllTransactionsService({
       userId,
-      filters: { type, category_id, from, to, page, limit },
+      filters: req.query,
     });
 
-    return res.status(200).json({
-      items: response.transactions,
-      page: response.pageNumber,
-      limit: response.limitNumber,
-      total: response.count,
-    });
+    return res.status(200).json(
+      successResponse({
+        items: result.transactions,
+        total: result.total,
+        page: result.page,
+        limit: result.limit,
+      }),
+    );
   },
 );
 
@@ -45,7 +47,11 @@ export const getTransactionById = asyncHandler(
       transactionId: id,
     });
 
-    return res.status(200).json(transaction);
+    return res.status(200).json(
+      successResponse({
+        transaction,
+      }),
+    );
   },
 );
 
@@ -60,7 +66,11 @@ export const createTransaction = asyncHandler(
       transaction: { amount, type, category_id, description, date },
     });
 
-    return res.status(201).json(transaction);
+    return res.status(201).json(
+      successResponse({
+        transaction,
+      }),
+    );
   },
 );
 
@@ -87,7 +97,11 @@ export const updateTransaction = asyncHandler(
       },
     });
 
-    return res.status(200).json(transaction);
+    return res.status(200).json(
+      successResponse({
+        transaction,
+      }),
+    );
   },
 );
 
@@ -105,10 +119,12 @@ export const deleteTransaction = asyncHandler(
       transactionId: id,
     });
 
-    return res.status(204).json({
-      message: "Transaction deleted successfully",
-      code: "SUCCESS",
-    });
+    return res.status(204).json(
+      successResponse({
+        message: "Transaction deleted successfully",
+        code: "SUCCESS",
+      }),
+    );
   },
 );
 
@@ -117,7 +133,7 @@ export const getSummary = asyncHandler(async (req: Request, res: Response) => {
 
   const summary = await getTransactionsSummaryService(userId);
 
-  return res.status(200).json(summary);
+  return res.status(200).json(successResponse(summary));
 });
 
 export const getExpensesByCategory = asyncHandler(
@@ -126,7 +142,7 @@ export const getExpensesByCategory = asyncHandler(
 
     const data = await getExpensesByCategoryService(userId);
 
-    return res.status(200).json(data);
+    return res.status(200).json(successResponse(data));
   },
 );
 
@@ -136,6 +152,6 @@ export const getExpensesByMonth = asyncHandler(
 
     const data = await getExpensesByMonthService(userId);
 
-    return res.status(200).json(data);
+    return res.status(200).json(successResponse(data));
   },
 );

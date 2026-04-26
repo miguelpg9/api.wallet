@@ -1,6 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import { Errors } from "../utils/errors";
 import { logger, sanitizeBody } from "../utils/logger";
+import { errorResponse } from "../utils/apiResponse";
 
 export const errorHandler = (
   err: any,
@@ -24,10 +25,9 @@ export const errorHandler = (
       "Handled error",
     );
 
-    return res.status(err.statusCode).json({
-      message: err.message,
-      code: err.code,
-    });
+    return res
+      .status(err.statusCode)
+      .json(errorResponse(err.message, err.code));
   }
 
   if (err.name === "ZodError") {
@@ -41,11 +41,9 @@ export const errorHandler = (
       "Validation error",
     );
 
-    return res.status(400).json({
-      message: "Validation error",
-      code: "VALIDATION_ERROR",
-      errors: err.errors,
-    });
+    return res
+      .status(400)
+      .json(errorResponse("Validation error", "VALIDATION_ERROR", err.errors));
   }
 
   log.error(
@@ -62,9 +60,12 @@ export const errorHandler = (
     "Unhandled error",
   );
 
-  return res.status(500).json({
-    message: isDev ? err.message : "Internal server error",
-    code: "INTERNAL_SERVER_ERROR",
-    ...(isDev && { stack: err.stack }),
-  });
+  return res
+    .status(500)
+    .json(
+      errorResponse(
+        isDev ? err.message : "Internal server error",
+        "INTERNAL_SERVER_ERROR",
+      ),
+    );
 };

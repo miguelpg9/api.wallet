@@ -8,45 +8,68 @@ export const getAllTransactionsService = async ({
   filters,
 }: {
   userId: string;
-  filters: {
-    type?: "income" | "expense";
-    category_id?: string;
-    from?: string;
-    to?: string;
-    page?: number;
-    limit?: number;
-  };
+  filters: any;
 }) => {
-  const pageNumber = Math.max(filters.page || 1, 1);
-  let limitNumber = Math.max(filters.limit || 10, 1);
-  limitNumber = Math.min(limitNumber, 100);
+  const {
+    page,
+    limit,
+    type,
+    categoryId,
+    from,
+    to,
+    minAmount,
+    maxAmount,
+    search,
+    sortBy,
+    order,
+  } = filters;
 
-  const offset = (pageNumber - 1) * limitNumber;
+  const offset = (page - 1) * limit;
 
-  const where: any = { user_id: userId, deleted_at: null };
-  if (filters.type) where.type = filters.type;
-  if (filters.category_id) where.category_id = filters.category_id;
+  const where: any = {
+    user_id: userId,
+    deleted_at: null,
+  };
 
-  if (filters.from || filters.to) {
-    where.date = {};
-    if (filters.from) where.date[Op.gte] = new Date(filters.from);
-    if (filters.to) where.date[Op.lte] = new Date(filters.to);
+  if (type) where.type = type;
+
+  if (categoryId) {
+    where.category_id = {
+      [Op.in]: categoryId,
+    };
   }
 
-  const { rows: transactions, count } = await Transaction.findAndCountAll({
+  if (from || to) {
+    where.date = {};
+    if (from) where.date[Op.gte] = from;
+    if (to) where.date[Op.lte] = to;
+  }
+
+  if (minAmount || maxAmount) {
+    where.amount = {};
+    if (minAmount) where.amount[Op.gte] = minAmount;
+    if (maxAmount) where.amount[Op.lte] = maxAmount;
+  }
+
+  if (search) {
+    where.description = {
+      [Op.iLike]: `%${search}%`,
+    };
+  }
+
+  const { rows, count } = await Transaction.findAndCountAll({
     where,
-    limit: limitNumber,
+    limit,
     offset,
-    order: [["created_at", "DESC"]],
-    include: [
-      {
-        model: Category,
-        attributes: ["id", "name"],
-      },
-    ],
+    order: [[sortBy, order.toUpperCase()]],
   });
 
-  return { transactions, count, limitNumber, pageNumber };
+  return {
+    transactions: rows,
+    total: count,
+    page,
+    limit,
+  };
 };
 
 export const getTransactionByIdService = async ({

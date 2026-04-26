@@ -3,12 +3,14 @@ import { authenticateToken } from "../middlewares/authMiddleware";
 import {
   validateQuery,
   validateBody,
+  validateParams,
 } from "../middlewares/validationMiddleware";
 import {
   createTransactionSchema,
   updateTransactionSchema,
-  getTransactionQuerySchema,
-} from "../validations/transactionSchema";
+  transactionQuerySchema,
+  transactionParamsSchema,
+} from "../schemas/transaction.schema";
 import {
   getAllTransactions,
   getTransactionById,
@@ -24,11 +26,20 @@ const router = Router();
 
 router.use(authenticateToken);
 
-router.get("/", validateQuery(getTransactionQuerySchema), getAllTransactions);
-router.get("/:id", getTransactionById);
 router.post("/", validateBody(createTransactionSchema), createTransaction);
-router.patch("/:id", validateBody(updateTransactionSchema), updateTransaction);
-router.delete("/:id", deleteTransaction);
+router.get("/", validateQuery(transactionQuerySchema), getAllTransactions);
+router.get("/:id", validateParams(transactionParamsSchema), getTransactionById);
+router.patch(
+  "/:id",
+  validateParams(transactionParamsSchema),
+  validateBody(updateTransactionSchema),
+  updateTransaction,
+);
+router.delete(
+  "/:id",
+  validateParams(transactionParamsSchema),
+  deleteTransaction,
+);
 router.get("/summary", getSummary);
 router.get("/by-category", getExpensesByCategory);
 router.get("/by-month", getExpensesByMonth);

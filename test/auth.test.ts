@@ -28,8 +28,9 @@ describe("Auth endpoints", () => {
       const res = await request(app).post("/api/auth/register").send(userData);
 
       expect(res.statusCode).toBe(201);
-      expect(res.body).toHaveProperty("accessToken");
-      expect(res.body.user.email).toBe(userData.email);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data).toHaveProperty("accessToken");
+      expect(res.body.data.user.email).toBe(userData.email);
 
       const user = await User.findOne({
         where: { email: userData.email },
@@ -44,6 +45,8 @@ describe("Auth endpoints", () => {
       const res = await request(app).post("/api/auth/register").send(userData);
 
       expect(res.statusCode).toBe(409);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error).toBeDefined();
     });
   });
 
@@ -59,7 +62,11 @@ describe("Auth endpoints", () => {
       });
 
       expect(res.statusCode).toBe(200);
-      expect(res.body).toHaveProperty("accessToken");
+      expect(res.body.success).toBe(true);
+      expect(res.body.data).toHaveProperty("accessToken");
+      expect(res.body.data.user.email).toBe(userData.email);
+
+      // cookie refresh token
       expect(res.headers["set-cookie"]).toBeDefined();
     });
 
@@ -70,6 +77,7 @@ describe("Auth endpoints", () => {
       });
 
       expect(res.statusCode).toBe(401);
+      expect(res.body.success).toBe(false);
     });
 
     it("should fail with non-existent user", async () => {
@@ -79,6 +87,7 @@ describe("Auth endpoints", () => {
       });
 
       expect(res.statusCode).toBe(401);
+      expect(res.body.success).toBe(false);
     });
   });
 
@@ -91,20 +100,22 @@ describe("Auth endpoints", () => {
         password: userData.password,
       });
 
-      const token = loginRes.body.accessToken;
+      const token = loginRes.body.data.accessToken;
 
       const res = await request(app)
         .get("/api/auth/me")
         .set("Authorization", `Bearer ${token}`);
 
       expect(res.statusCode).toBe(200);
-      expect(res.body.email).toBe(userData.email);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.user.email).toBe(userData.email);
     });
 
     it("should fail without token", async () => {
       const res = await request(app).get("/api/auth/me");
 
       expect(res.statusCode).toBe(401);
+      expect(res.body.success).toBe(false);
     });
   });
 
@@ -124,13 +135,15 @@ describe("Auth endpoints", () => {
         .set("Cookie", cookies);
 
       expect(res.statusCode).toBe(200);
-      expect(res.body).toHaveProperty("accessToken");
+      expect(res.body.success).toBe(true);
+      expect(res.body.data).toHaveProperty("accessToken");
     });
 
     it("should fail without cookie", async () => {
       const res = await request(app).post("/api/auth/refresh");
 
       expect(res.statusCode).toBe(401);
+      expect(res.body.success).toBe(false);
     });
   });
 
@@ -150,6 +163,7 @@ describe("Auth endpoints", () => {
         .set("Cookie", cookies);
 
       expect(res.statusCode).toBe(200);
+      expect(res.body.success).toBe(true);
     });
   });
 });

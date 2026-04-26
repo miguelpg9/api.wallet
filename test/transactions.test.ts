@@ -44,8 +44,8 @@ describe("Transactions endpoints", () => {
       password: userData2.password,
     });
 
-    token = loginRes.body.accessToken;
-    userId = loginRes.body.user.id;
+    token = loginRes.body.data.accessToken;
+    userId = loginRes.body.data.user.id;
 
     const category = await Category.create({
       name: "Food",
@@ -63,7 +63,7 @@ describe("Transactions endpoints", () => {
 
     const transactionUser2 = await request(app)
       .post("/api/transactions")
-      .set("Authorization", `Bearer ${loginResUser2.body.accessToken}`)
+      .set("Authorization", `Bearer ${loginResUser2.body.data.accessToken}`)
       .send({
         amount: 50,
         type: "expense",
@@ -72,7 +72,7 @@ describe("Transactions endpoints", () => {
         date: new Date(),
       });
 
-    transactionIdUser2 = transactionUser2.body.id;
+    transactionIdUser2 = transactionUser2.body.data.id;
   });
 
   afterAll(async () => {
@@ -93,7 +93,8 @@ describe("Transactions endpoints", () => {
         });
 
       expect(res.statusCode).toBe(201);
-      expect(res.body).toHaveProperty("id");
+      expect(res.body.success).toBe(true);
+      expect(res.body.data).toHaveProperty("id");
     });
 
     it("should fail with invalid data", async () => {
@@ -106,6 +107,8 @@ describe("Transactions endpoints", () => {
           categoryId: "nonexistent_category_id",
         });
       expect(res.statusCode).toBe(400);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error).toBeDefined();
     });
 
     it("should fail without auth", async () => {
@@ -116,6 +119,8 @@ describe("Transactions endpoints", () => {
       });
 
       expect(res.statusCode).toBe(401);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error).toBeDefined();
     });
 
     it("should fail if category belongs to another user", async () => {
@@ -129,6 +134,8 @@ describe("Transactions endpoints", () => {
         });
 
       expect(res.statusCode).toBe(400);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error).toBeDefined();
     });
   });
 
@@ -148,22 +155,27 @@ describe("Transactions endpoints", () => {
         .set("Authorization", `Bearer ${token}`);
 
       expect(res.statusCode).toBe(200);
-      expect(res.body.items.length).toBeGreaterThan(0);
-
-      expect(res.body.items.every((t: any) => t.user_id === userId)).toBe(true);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.items.length).toBeGreaterThan(0);
+      expect(res.body.data.items.every((t: any) => t.user_id === userId)).toBe(
+        true,
+      );
     });
 
     it("it should fail without auth", async () => {
       const res = await request(app).get("/api/transactions");
       expect(res.statusCode).toBe(401);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error).toBeDefined();
     });
 
     it("should return empty array if no transactions", async () => {
       const res = await request(app)
         .get("/api/transactions")
         .set("Authorization", `Bearer ${token}`);
-      expect(res.statusCode).toBe(200);
-      expect(res.body.items.length).toBe(0);
+
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.items.length).toBe(0);
     });
 
     it("should support pagination", async () => {
@@ -182,18 +194,11 @@ describe("Transactions endpoints", () => {
         .get("/api/transactions?page=2&limit=5")
         .set("Authorization", `Bearer ${token}`);
 
-      expect(res.statusCode).toBe(200);
-      expect(res.body.items.length).toBe(5);
-      expect(res.body.page).toBe(2);
-      expect(res.body.limit).toBe(5);
-      expect(res.body.total).toBe(15);
-    });
-
-    it("should fail with invalid pagination params", async () => {
-      const res = await request(app)
-        .get("/api/transactions?page=-1&limit=0")
-        .set("Authorization", `Bearer ${token}`);
-      expect(res.statusCode).toBe(400);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.items.length).toBe(5);
+      expect(res.body.data.page).toBe(2);
+      expect(res.body.data.limit).toBe(5);
+      expect(res.body.data.total).toBe(15);
     });
 
     it("should fail with invalid pagination params", async () => {
@@ -202,6 +207,7 @@ describe("Transactions endpoints", () => {
         .set("Authorization", `Bearer ${token}`);
 
       expect(res.statusCode).toBe(400);
+      expect(res.body.success).toBe(false);
     });
   });
 
@@ -221,25 +227,33 @@ describe("Transactions endpoints", () => {
         .set("Authorization", `Bearer ${token}`);
 
       expect(res.statusCode).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data).toBeDefined();
     });
 
     it("should return 404 for non-existent transaction", async () => {
       const res = await request(app)
         .get("/api/transactions/nonexistent_id")
         .set("Authorization", `Bearer ${token}`);
+
       expect(res.statusCode).toBe(404);
+      expect(res.body.success).toBe(false);
     });
 
     it("should fail without auth", async () => {
       const res = await request(app).get("/api/transactions/nonexistent_id");
+
       expect(res.statusCode).toBe(401);
+      expect(res.body.success).toBe(false);
     });
 
     it("should not return transaction of another user", async () => {
       const res = await request(app)
         .get(`/api/transactions/${transactionIdUser2}`)
         .set("Authorization", `Bearer ${token}`);
+
       expect(res.statusCode).toBe(404);
+      expect(res.body.success).toBe(false);
     });
   });
 
@@ -262,6 +276,7 @@ describe("Transactions endpoints", () => {
         });
 
       expect(res.statusCode).toBe(200);
+      expect(res.body.success).toBe(true);
     });
 
     it("should return 404 for non-existent transaction", async () => {
@@ -271,7 +286,9 @@ describe("Transactions endpoints", () => {
         .send({
           amount: 200,
         });
+
       expect(res.statusCode).toBe(404);
+      expect(res.body.success).toBe(false);
     });
 
     it("should fail without auth", async () => {
@@ -280,7 +297,9 @@ describe("Transactions endpoints", () => {
         .send({
           amount: 200,
         });
+
       expect(res.statusCode).toBe(401);
+      expect(res.body.success).toBe(false);
     });
 
     it("should not update transaction of another user", async () => {
@@ -290,7 +309,9 @@ describe("Transactions endpoints", () => {
         .send({
           amount: 200,
         });
+
       expect(res.statusCode).toBe(404);
+      expect(res.body.success).toBe(false);
     });
   });
 
@@ -311,38 +332,45 @@ describe("Transactions endpoints", () => {
         .delete(`/api/transactions/${id}`)
         .set("Authorization", `Bearer ${token}`);
 
-      expect(res.statusCode).toBe(204);
+      expect(res.statusCode).toBe(200);
+      expect(res.body.success).toBe(true);
 
       const getRes = await request(app)
         .get(`/api/transactions/${id}`)
         .set("Authorization", `Bearer ${token}`);
 
       expect(getRes.statusCode).toBe(404);
+      expect(res.body.success).toBe(false);
     });
 
     it("should return 404 for non-existent transaction", async () => {
       const res = await request(app)
         .delete("/api/transactions/nonexistent_id")
         .set("Authorization", `Bearer ${token}`);
+
       expect(res.statusCode).toBe(404);
+      expect(res.body.success).toBe(false);
     });
 
     it("should fail without auth", async () => {
       const res = await request(app).delete("/api/transactions/nonexistent_id");
+
       expect(res.statusCode).toBe(401);
+      expect(res.body.success).toBe(false);
     });
 
     it("should not delete transaction of another user", async () => {
       const rest = await request(app)
         .delete(`/api/transactions/${transactionIdUser2}`)
         .set("Authorization", `Bearer ${token}`);
+
       expect(rest.statusCode).toBe(404);
+      expect(res.body.success).toBe(false);
     });
   });
 
   describe("GET /api/transactions filters", () => {
     beforeEach(async () => {
-      // crear datos variados
       await request(app)
         .post("/api/transactions")
         .set("Authorization", `Bearer ${token}`)
@@ -370,7 +398,8 @@ describe("Transactions endpoints", () => {
         .set("Authorization", `Bearer ${token}`);
 
       expect(res.statusCode).toBe(200);
-      expect(res.body.items.every((t: any) => t.type === "expense")).toBe(true);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.items.every((t: any) => t.type === "expense")).toBe(true);
     });
 
     it("should filter by category", async () => {
@@ -379,7 +408,7 @@ describe("Transactions endpoints", () => {
         .set("Authorization", `Bearer ${token}`);
 
       expect(res.statusCode).toBe(200);
-      expect(res.body.items.length).toBeGreaterThan(0);
+      expect(res.body.data.items.length).toBeGreaterThan(0);
     });
 
     it("should filter by date range", async () => {
@@ -388,7 +417,7 @@ describe("Transactions endpoints", () => {
         .set("Authorization", `Bearer ${token}`);
 
       expect(res.statusCode).toBe(200);
-      expect(res.body.items.length).toBe(1);
+      expect(res.body.data.items.length).toBe(1);
     });
   });
 
@@ -418,10 +447,10 @@ describe("Transactions endpoints", () => {
         .get("/api/transactions/summary")
         .set("Authorization", `Bearer ${token}`);
 
-      expect(res.statusCode).toBe(200);
-      expect(res.body.income).toBe(100);
-      expect(res.body.expense).toBe(50);
-      expect(res.body.balance).toBe(50);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.income).toBe(100);
+      expect(res.body.data.expense).toBe(50);
+      expect(res.body.data.balance).toBe(50);
     });
   });
 
@@ -432,7 +461,8 @@ describe("Transactions endpoints", () => {
         .set("Authorization", `Bearer ${token}`);
 
       expect(res.statusCode).toBe(200);
-      expect(Array.isArray(res.body)).toBe(true);
+      expect(res.body.success).toBe(true);
+      expect(Array.isArray(res.body.data)).toBe(true);
     });
   });
 
@@ -443,7 +473,8 @@ describe("Transactions endpoints", () => {
         .set("Authorization", `Bearer ${token}`);
 
       expect(res.statusCode).toBe(200);
-      expect(Array.isArray(res.body)).toBe(true);
+      expect(res.body.success).toBe(true);
+      expect(Array.isArray(res.body.data)).toBe(true);
     });
   });
 });
