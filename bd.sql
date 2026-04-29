@@ -43,5 +43,13 @@ CREATE TABLE refresh_tokens (
 );
 
 CREATE INDEX idx_transactions_user_id ON transactions(user_id);
-CREATE INDEX idx_transactions_date ON transactions(date);
 CREATE INDEX idx_transactions_category ON transactions(category_id);
+CREATE INDEX idx_transactions_date ON transactions(date);
+CREATE INDEX idx_transactions_type ON transactions(type);
+CREATE INDEX idx_transactions_user_date ON transactions(user_id, date DESC);.
+CREATE INDEX idx_transactions_deleted_at ON transactions(deleted_at);
+CREATE UNIQUE INDEX idx_users_email ON users(email);
+CREATE INDEX idx_categories_user_id ON categories(user_id);
+CREATE INDEX idx_tokens_user_id ON refresh_tokens(user_id);
+CREATE INDEX idx_tokens_token ON refresh_tokens(token);
+CREATE INDEX idx_tokens_expires ON refresh_tokens(expires_at);
